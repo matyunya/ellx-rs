@@ -1,6 +1,6 @@
 import { join } from 'path';
 import fs, { Stats } from 'fs';
-import { FSRequest, FSResponse } from "../index";
+import { FSRequest, FSResponse } from '../index';
 
 const { stat, readFile, readdir, mkdir, writeFile, rmdir, unlink, rename, copyFile } = fs.promises;
 

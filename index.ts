@@ -1,10 +1,10 @@
 import commandLineArgs from 'command-line-args';
 import { resolve } from 'path';
-import cors from "cors";
-import polka from "polka";
+import cors from 'cors';
+import polka from 'polka';
 import { Request, Response, NextFunction, RequestHandler } from 'express';
-import fetch from "node-fetch";
-import { json } from "body-parser";
+import fetch from 'node-fetch';
+import { json } from 'body-parser';
 import * as ec from './util/ec';
 import WebSocket from 'ws';
 import { createServer } from 'http';
