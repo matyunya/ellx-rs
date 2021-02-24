@@ -88,12 +88,14 @@ fetch(config.trust).then(r => {
     else return handler(req, res, next);
   }
 
-  polka({ server })
+  const app = polka({ server });
+
+  app
     .use(json(), helpers, cors())
     .use('/resource', auth(serveFiles(config.root)))
     .get('/identity', (_: FSRequest, res: FSResponse) => res.end(config.identity))
-    // @ts-ignore
-    .listen(config.port, (err: Error) => {
+
+  app.listen(config.port, (err: Error) => {
       if (err) throw err;
       console.log(`> Running on localhost:${config.port}`);
       console.log('Serving ' + config.root);
