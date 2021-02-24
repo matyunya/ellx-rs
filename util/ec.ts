@@ -1,5 +1,5 @@
-const crypto = require('crypto');
-const EC = require('elliptic').ec;
+import crypto from 'crypto';
+import { ec as EC } from 'elliptic';
 
 const DEFAULT_CURVE = 'secp256k1';
 
@@ -23,7 +23,9 @@ function messageHash(msg) {
 }
 
 class Elliptic {
-  constructor(key) {
+  key: Elliptic;
+
+  constructor(key: Elliptic) {
     this.key = key;
   }
 
@@ -36,7 +38,7 @@ class Elliptic {
     return b64urlEncode(Buffer.concat([x, y].map(bn2Buffer)));
   }
 
-  sign(msg) {
+  sign(msg: string) {
     let digest = messageHash(msg);
     let { r, s, recoveryParam } = this.key.sign(digest);
     return b64urlEncode(
@@ -44,7 +46,7 @@ class Elliptic {
     ).substr(1); // Strip away the leading 'A'
   }
 
-  verify(msg, signature) {
+  verify(msg: string, signature: string) {
     try {
       let buf = b64urlDecode('A' + signature),
         nBytes = (buf.length - 1) >> 1;
@@ -59,9 +61,9 @@ class Elliptic {
   }
 }
 
-exports.b64urlEncode = b64urlEncode;
+export { b64urlEncode };
 
-exports.keyFromPublic = (pubKey, curve = DEFAULT_CURVE) => {
+export const keyFromPublic = (pubKey: string, curve: string = DEFAULT_CURVE) => {
   let buf = b64urlDecode(pubKey),
     nBytes = buf.length >> 1;
   let x = buf.slice(0, nBytes),
@@ -71,7 +73,7 @@ exports.keyFromPublic = (pubKey, curve = DEFAULT_CURVE) => {
   return new Elliptic(ec.keyFromPublic({ x, y }));
 };
 
-exports.keyFromSignature = (msg, signature, curve = DEFAULT_CURVE) => {
+export const keyFromSignature = (msg: string, signature: string, curve: string = DEFAULT_CURVE) => {
   let buf = b64urlDecode('A' + signature),
     nBytes = (buf.length - 1) >> 1;
   let recoveryParam = buf[0],
@@ -84,12 +86,12 @@ exports.keyFromSignature = (msg, signature, curve = DEFAULT_CURVE) => {
   return new Elliptic(ec.keyFromPublic(pubKey));
 };
 
-exports.keyFromPrivate = (key, curve = DEFAULT_CURVE) => {
+export const keyFromPrivate = (key: string, curve: string = DEFAULT_CURVE) => {
   let ec = new EC(curve);
   return new Elliptic(ec.keyFromPrivate(b64urlDecode(key)));
 };
 
-exports.generate = (curve = DEFAULT_CURVE) => {
+export const generate = (curve: string = DEFAULT_CURVE) => {
   let ec = new EC(curve);
   return new Elliptic(ec.genKeyPair());
 };

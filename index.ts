@@ -1,16 +1,31 @@
-#!/usr/bin/env node
+import commandLineArgs from 'command-line-args';
+import { resolve } from 'path';
+import cors from "cors";
+import polka from "polka";
+import { Request, Response, NextFunction } from 'express';
+import fetch from "node-fetch";
+import { json } from "body-parser";
+import * as ec from './util/ec';
+import WebSocket from 'ws';
+import { createServer } from 'http';
+import serveFiles from './util/serve_files';
 
-const commandLineArgs = require('command-line-args');
-const path = require('path');
-const cors = require("cors");
-const polka = require("polka");
-const fetch = require("node-fetch");
-const { json } = require("body-parser");
-const ec = require('./util/ec');
-const WebSocket = require('ws');
-const http = require('http');
+type FSHeaders = Headers & {
+  authorization?: string;
+}
 
-const serveFiles = require('./util/serve_files');
+type StatusCode = number;
+
+type FSRequest = Request & {
+  headers: FSHeaders;
+}
+
+type FSResponse = Response & {
+  statusCode: StatusCode;
+
+  sendJson: (resp: any) => void;
+  error: (error: any, status: StatusCode) => void;
+}
 
 const optionDefinitions = [
   { name: 'user', alias: 'u', type: String, defaultOption: true },
@@ -25,7 +40,7 @@ const config = commandLineArgs(optionDefinitions);
 config.port = config.port || 3002;
 config.trust = config.trust || 'https://api.ellx.io/certificate';
 config.identity = config.identity || 'localhost~' + config.port;
-config.root = path.resolve(process.cwd(), config.root || '.');
+config.root = resolve(process.cwd(), config.root || '.');
 
 // TODO: RegEx check and warn for user and identity
 
@@ -34,14 +49,14 @@ if (!config.user) {
   process.exit();
 }
 
-const helpers = (req, res, next) => {
-  res.json = resp => {
+const helpers = (req: FSRequest, res: FSResponse, next: NextFunction) => {
+  res.sendJson = (resp: any) => {
     res.setHeader('Content-Type', 'application/json');
     res.end(JSON.stringify(resp));
   }
-  res.error = (error, status = 500) => {
+  res.error = (error: any, status: StatusCode = 500) => {
     res.statusCode = status;
-    res.json({
+    res.sendJson({
       error
       // TODO: context
     });
@@ -49,7 +64,7 @@ const helpers = (req, res, next) => {
   next();
 }
 
-const server = http.createServer();
+const server = createServer();
 
 fetch(config.trust).then(r => {
   if (r.ok) return r.text();
@@ -59,7 +74,7 @@ fetch(config.trust).then(r => {
   console.log(`Successfully fetched ${config.trust}: ${cert}`);
   const publicKey = ec.keyFromPublic(cert);
 
-  const auth = handler => (req, res) => {
+  const auth = (handler: any) => (req: FSRequest, res: FSResponse, next: NextFunction) => {
     if (!req.headers.authorization) {
       return res.error('No authorization header', 401);
     }
@@ -70,14 +85,14 @@ fetch(config.trust).then(r => {
     if (!publicKey.verify(payload, signature)) {
       res.error('Forbidden', 403);
     }
-    else return handler(req, res);
+    else return handler(req, res, next);
   }
 
   polka({ server })
     .use(json(), helpers, cors())
     .use('/resource', auth(serveFiles(config.root)))
-    .get('/identity', (_, res) => res.end(config.identity))
-    .listen(config.port, err => {
+    .get('/identity', (_: any, res: any) => res.end(config.identity))
+    .listen(config.port, (err: Error) => {
       if (err) throw err;
       console.log(`> Running on localhost:${config.port}`);
       console.log('Serving ' + config.root);

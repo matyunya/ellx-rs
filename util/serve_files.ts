@@ -1,6 +1,5 @@
-const { join } = require('path');
-const fs = require('fs');
-const mime = require('mime/lite');
+import { join } from 'path';
+import fs from 'fs';
 
 const { stat, readFile, readdir, mkdir, writeFile, rmdir, unlink, rename, copyFile } = fs.promises;
 
@@ -17,7 +16,7 @@ async function sendFile(res, file, stats) {
 async function sendDirectory(res, filePath) {
   const items = await readdir(filePath, { withFileTypes: true });
 
-  res.json(items
+  res.sendJson(items
     .filter(item => !item.name.startsWith('.') && (item.isDirectory() || item.isFile()))
     .map(item => item.name + (item.isDirectory() ? '/' : ''))
   );
@@ -34,7 +33,7 @@ async function copyDirectory(filePath, newPath) {
     )));
 }
 
-async function makeOne(filePath, contents, secondTry = false) {
+async function makeOne(filePath, contents = '', secondTry = false) {
   try {
     // TODO: set proper access rights mode
     if (filePath.endsWith('/')) await mkdir(filePath);
@@ -114,4 +113,4 @@ const serve = root => async (req, res) => {
   }
 }
 
-module.exports = serve;
+export default serve;
