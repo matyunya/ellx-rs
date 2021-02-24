@@ -2,30 +2,40 @@ import crypto from 'crypto';
 import { ec as EC } from 'elliptic';
 
 const DEFAULT_CURVE = 'secp256k1';
+const ENCODE_REPLACEMENTS = { '+': '-', '/': '_', '=': '' };
+const DECODE_REPLACEMENTS = { '-': '+', _: '/' };
 
-const b64urlEncode = buf =>
+type ReplacementsFrom = "+" | "=" | "/";
+type ReplacementsTo = "-" | "_";
+
+const b64urlEncode = (buf: Buffer) =>
   buf
     .toString('base64')
-    .replace(/[+=/]/g, match => ({ '+': '-', '/': '_', '=': '' }[match]));
-const b64urlDecode = s =>
+    .replace(/[+=/]/g, (match: ReplacementsFrom) => (ENCODE_REPLACEMENTS[match]));
+
+const b64urlDecode = (s: string) =>
   Buffer.from(
-    s.replace(/[-_]/g, match => ({ '-': '+', _: '/' }[match])) +
+    s.replace(/[-_]/g, (match: ReplacementsTo) => (DECODE_REPLACEMENTS[match])) +
       '='.repeat(3 - ((s.length - 1) % 4)),
     'base64'
   );
 
-const bn2Buffer = bn => (bn.red ? bn.fromRed() : bn).toBuffer();
+// is BN
+// import BN from "bn.js"
+// but .red says "red is a static property"
+// which I'm not sure how to get around.
+const bn2Buffer = (bn: any) => (bn.red ? bn.fromRed() : bn).toBuffer();
 
-function messageHash(msg) {
+function messageHash(msg: string) {
   const hash = crypto.createHash('sha256');
   hash.update(msg);
   return hash.digest();
 }
 
 class Elliptic {
-  key: Elliptic;
+  key: EC.KeyPair;
 
-  constructor(key: Elliptic) {
+  constructor(key: EC.KeyPair) {
     this.key = key;
   }
 
@@ -34,7 +44,8 @@ class Elliptic {
   }
 
   publicKey() {
-    let { x, y } = this.key.getPublic();
+    const x = this.key.getPublic().getX();
+    const y = this.key.getPublic().getY();
     return b64urlEncode(Buffer.concat([x, y].map(bn2Buffer)));
   }
 
@@ -70,7 +81,7 @@ export const keyFromPublic = (pubKey: string, curve: string = DEFAULT_CURVE) => 
     y = buf.slice(nBytes);
 
   let ec = new EC(curve);
-  return new Elliptic(ec.keyFromPublic({ x, y }));
+  return new Elliptic(ec.keyFromPublic({ x: String(x), y: String(y) }));
 };
 
 export const keyFromSignature = (msg: string, signature: string, curve: string = DEFAULT_CURVE) => {

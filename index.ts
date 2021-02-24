@@ -2,7 +2,7 @@ import commandLineArgs from 'command-line-args';
 import { resolve } from 'path';
 import cors from "cors";
 import polka from "polka";
-import { Request, Response, NextFunction } from 'express';
+import { Request, Response, NextFunction, RequestHandler } from 'express';
 import fetch from "node-fetch";
 import { json } from "body-parser";
 import * as ec from './util/ec';
@@ -16,11 +16,11 @@ type FSHeaders = Headers & {
 
 type StatusCode = number;
 
-type FSRequest = Request & {
+export type FSRequest = Request & {
   headers: FSHeaders;
 }
 
-type FSResponse = Response & {
+export type FSResponse = Response & {
   statusCode: StatusCode;
 
   sendJson: (resp: any) => void;
@@ -49,7 +49,7 @@ if (!config.user) {
   process.exit();
 }
 
-const helpers = (req: FSRequest, res: FSResponse, next: NextFunction) => {
+const helpers = (_: FSRequest, res: FSResponse, next: NextFunction) => {
   res.sendJson = (resp: any) => {
     res.setHeader('Content-Type', 'application/json');
     res.end(JSON.stringify(resp));
@@ -74,7 +74,7 @@ fetch(config.trust).then(r => {
   console.log(`Successfully fetched ${config.trust}: ${cert}`);
   const publicKey = ec.keyFromPublic(cert);
 
-  const auth = (handler: any) => (req: FSRequest, res: FSResponse, next: NextFunction) => {
+  const auth = (handler: RequestHandler) => (req: FSRequest, res: FSResponse, next: NextFunction) => {
     if (!req.headers.authorization) {
       return res.error('No authorization header', 401);
     }
@@ -91,7 +91,8 @@ fetch(config.trust).then(r => {
   polka({ server })
     .use(json(), helpers, cors())
     .use('/resource', auth(serveFiles(config.root)))
-    .get('/identity', (_: any, res: any) => res.end(config.identity))
+    .get('/identity', (_: FSRequest, res: FSResponse) => res.end(config.identity))
+    // @ts-ignore
     .listen(config.port, (err: Error) => {
       if (err) throw err;
       console.log(`> Running on localhost:${config.port}`);

@@ -1,9 +1,10 @@
 import { join } from 'path';
-import fs from 'fs';
+import fs, { Stats } from 'fs';
+import { FSRequest, FSResponse } from "../index";
 
 const { stat, readFile, readdir, mkdir, writeFile, rmdir, unlink, rename, copyFile } = fs.promises;
 
-async function sendFile(res, file, stats) {
+async function sendFile(res: FSResponse, file: string, stats: Stats): Promise<void> {
   const headers = {
     'Content-Length': stats.size,
     'Content-Type': 'text/plain' //mime.getType(file)
@@ -13,7 +14,7 @@ async function sendFile(res, file, stats) {
   res.end(await readFile(file, { encoding: 'utf8' }));
 }
 
-async function sendDirectory(res, filePath) {
+async function sendDirectory(res: FSResponse, filePath: string): Promise<void> {
   const items = await readdir(filePath, { withFileTypes: true });
 
   res.sendJson(items
@@ -22,7 +23,7 @@ async function sendDirectory(res, filePath) {
   );
 }
 
-async function copyDirectory(filePath, newPath) {
+async function copyDirectory(filePath: string, newPath: string): Promise<any> {
   await mkdir(newPath);
   const items = await readdir(filePath, { withFileTypes: true });
 
@@ -33,7 +34,7 @@ async function copyDirectory(filePath, newPath) {
     )));
 }
 
-async function makeOne(filePath, contents = '', secondTry = false) {
+async function makeOne(filePath: string, contents = '', secondTry = false): Promise<any> {
   try {
     // TODO: set proper access rights mode
     if (filePath.endsWith('/')) await mkdir(filePath);
@@ -50,16 +51,17 @@ async function makeOne(filePath, contents = '', secondTry = false) {
   }
 }
 
-function makeResources(filePath, files) {
-  files = new Map(files
+function makeResources(filePath: string, files: [string, string][]) {
+  const filesMap = new Map(files
     .filter(Array.isArray)
-    .map(([path, contents]) => [join(filePath, decodeURI(path)), contents && String(contents)])
+    .map(([path, contents]) => [join(filePath, decodeURI(path)), contents && String(contents)] as [string, string])
     .filter(([path]) => path.startsWith(filePath))
   );
-  return Promise.all([...files].map(pair => makeOne(...pair)));
+
+  return Promise.all([...filesMap].map(pair => makeOne(...pair)));
 }
 
-const serve = root => async (req, res) => {
+const serve = (root: string) => async (req: FSRequest, res: FSResponse) => {
   const filePath = join(root, decodeURI(req.path));
 
   console.log(req.method + ' ' + filePath);
