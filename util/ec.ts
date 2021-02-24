@@ -44,8 +44,8 @@ class Elliptic {
   }
 
   publicKey() {
-    const x = this.key.getPublic().getX();
-    const y = this.key.getPublic().getY();
+    // @ts-ignore
+    let { x, y } = this.key.getPublic();
     return b64urlEncode(Buffer.concat([x, y].map(bn2Buffer)));
   }
 
@@ -72,19 +72,19 @@ class Elliptic {
   }
 }
 
-export { b64urlEncode };
-
-export const keyFromPublic = (pubKey: string, curve: string = DEFAULT_CURVE) => {
+export const keyFromPublic = (pubKey: string, curve = DEFAULT_CURVE) => {
   let buf = b64urlDecode(pubKey),
     nBytes = buf.length >> 1;
   let x = buf.slice(0, nBytes),
     y = buf.slice(nBytes);
 
   let ec = new EC(curve);
-  return new Elliptic(ec.keyFromPublic({ x: String(x), y: String(y) }));
+
+  // @ts-ignore
+  return new Elliptic(ec.keyFromPublic({ x, y }));
 };
 
-export const keyFromSignature = (msg: string, signature: string, curve: string = DEFAULT_CURVE) => {
+export const keyFromSignature = (msg: string, signature: string, curve = DEFAULT_CURVE) => {
   let buf = b64urlDecode('A' + signature),
     nBytes = (buf.length - 1) >> 1;
   let recoveryParam = buf[0],
@@ -97,12 +97,12 @@ export const keyFromSignature = (msg: string, signature: string, curve: string =
   return new Elliptic(ec.keyFromPublic(pubKey));
 };
 
-export const keyFromPrivate = (key: string, curve: string = DEFAULT_CURVE) => {
+export const keyFromPrivate = (key: string, curve = DEFAULT_CURVE) => {
   let ec = new EC(curve);
   return new Elliptic(ec.keyFromPrivate(b64urlDecode(key)));
 };
 
-export const generate = (curve: string = DEFAULT_CURVE) => {
+export const generate = (curve = DEFAULT_CURVE) => {
   let ec = new EC(curve);
   return new Elliptic(ec.genKeyPair());
 };
